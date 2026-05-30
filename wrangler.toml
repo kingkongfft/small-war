@@ -18,4 +18,4 @@ bindings = [
 # DO migration: register the class so Cloudflare provisions storage for it.
 [[migrations]]
 tag = "v1"
-new_classes = ["GameRoom"]
+new_sqlite_classes = ["GameRoom"]
