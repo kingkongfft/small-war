@@ -78,7 +78,7 @@ const run = async () => {
       continue;
     }
 
-    const enemies = state.agents.filter(a => a.agentId !== AGENT_ID && a.alive);
+    const enemies = state.agents.filter(a => a.agentId !== AGENT_ID && a.alive && !a.isNpc);
     if (!enemies.length) continue;
 
     let nearest = enemies.sort((a, b) => manhattan(me, a) - manhattan(me, b))[0];

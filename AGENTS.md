@@ -70,7 +70,7 @@ WS   /ws                                                     → push GameState 
   "grid": { "rows": 15, "cols": 15 },
   "agents": [{ "agentId", "name", "characterId", "row", "col", "score", "hp", "alive",
                "facingDir", "zone", "isNpc", "lastShotTick", "clientId" }],
-  "bullets": [{ "bulletId", "ownerId", "row", "col", "direction" }],
+  "bullets": [{ "bulletId", "ownerId", "ownerZone", "row", "col", "direction" }],
   "chat": [{ "ts", "agentId", "name", "message" }]
 }
 ```

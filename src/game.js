@@ -184,6 +184,7 @@ export function shoot(agentId, direction) {
   state.bullets.set(bulletId, {
     bulletId,
     ownerId:   agentId,
+    ownerZone: agent.zone,  // cached so friendly-fire still works after shooter is eliminated
     row:       agent.row,   // spawn at shooter's own cell;
     col:       agent.col,   // first tick will advance it +1 before hit check
     direction,
@@ -258,12 +259,13 @@ function _tick() {
       // Hit check — bullets pass through NPCs and through same-zone teammates
       const victim = agentAt(bullet.row, bullet.col);
       if (victim && !victim.isNpc) {
-        const shooter = state.agents.get(bullet.ownerId);
-        // Friendly fire: same zone → bullet passes through, no damage
-        if (shooter && shooter.zone === victim.zone) continue;
+        // Friendly fire: same zone → bullet passes through, no damage.
+        // Use ownerZone (cached at spawn) so this still works if shooter was eliminated.
+        if (bullet.ownerZone === victim.zone) continue;
 
         victim.score -= 1;
         victim.hp    -= 1;
+        const shooter = state.agents.get(bullet.ownerId);
         if (shooter) shooter.score += 1;
         state.bullets.delete(bulletId);
 
