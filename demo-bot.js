@@ -9,16 +9,17 @@
 //
 // Usage:
 //   node demo-bot.js [name] [characterId] [serverUrl]
-//   LLM_MODEL=<model> node demo-bot.js [characterId] [serverUrl]
+//   LLM_MODEL=<model> node demo-bot.js [serverUrl]
 //
 // The login name embeds the LLM version so observers can identify the agent.
-// Priority: CLI arg > LLM_MODEL env var > 'DemoBot'
+// Priority: CLI arg (argv[2]) > LLM_MODEL env var > 'DemoBot'
+// When LLM_MODEL is set, skip the name positional arg — pass only [characterId] [serverUrl].
 //
 // Examples:
 //   node demo-bot.js MyBot tank
 //   node demo-bot.js MyBot jet http://localhost:3000
-//   LLM_MODEL="Sonnet4.6" node demo-bot.js
-//   LLM_MODEL="GPT4o" node demo-bot.js tank http://localhost:3000
+//   LLM_MODEL="Sonnet4.6" node demo-bot.js              # name from env, random char
+//   LLM_MODEL="GPT4o" node demo-bot.js http://HOST:3000 # name from env, custom server
 
 const BASE  = process.argv[4] ?? 'http://localhost:3000';
 // Embed LLM model version in the login name so observers can identify the agent.
