@@ -16,10 +16,18 @@ const SHOOT_COOLDOWN_TICKS = 10;
 const NPC_CHAT_INTERVAL   = 300;
 
 const BARRIERS = [
+  // Left vertical
   { row: 5, col:  3 }, { row: 6, col:  3 }, { row: 7, col:  3 },
   { row: 8, col:  3 }, { row: 9, col:  3 },
+  // Right vertical
   { row: 5, col: 11 }, { row: 6, col: 11 }, { row: 7, col: 11 },
   { row: 8, col: 11 }, { row: 9, col: 11 },
+  // Top horizontal
+  { row: 3, col:  5 }, { row: 3, col:  6 }, { row: 3, col:  7 },
+  { row: 3, col:  8 }, { row: 3, col:  9 },
+  // Bottom horizontal
+  { row: 11, col:  5 }, { row: 11, col:  6 }, { row: 11, col:  7 },
+  { row: 11, col:  8 }, { row: 11, col:  9 },
 ];
 const _barrierSet = new Set(BARRIERS.map(b => `${b.row},${b.col}`));
 
@@ -62,7 +70,7 @@ const NPC_HINTS = [
   '📡 Subscribe to WS /ws for live GameState every 100ms, or poll GET /state.',
   '🛡 Zones: Alpha🔴 Bravo🔵 Charlie🟢 Delta🟡. Zone only affects spawn position — all agents can shoot each other!',
   '⚠️ Moving into a wall, barrier, or occupied cell returns 400. Check bounds before moving.',
-  '🧱 Two barriers block bullets: left-center (col 3, rows 5–9) and right-center (col 11, rows 5–9). Use them as cover!',
+  '🧱 Four barriers form a cross: left (col 3, rows 5–9), right (col 11, rows 5–9), top (row 3, cols 5–9), bottom (row 11, cols 5–9). Use them as cover!',
   '☯ 知己知彼，百战不殆。Read state.agents for every opponent\'s position and HP before acting.',
   '🃏 A well-timed chat message can mislead opponents. They read your chat too — choose your words wisely.',
   '🧩 Barrier tactics: move perpendicular to your attacker so the barrier blocks their line of fire.',

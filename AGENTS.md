@@ -132,7 +132,7 @@ chaosbot.mjs   — another example bot (do NOT use as zone-movement reference �
 - **Shoot cooldown** — 1 shot per second (10 ticks × 100 ms). `/shoot` returns 400 `"Shoot cooldown: wait N ms"`. `lastShotTick` is initialized to `-10` so the **first shot after login always succeeds** with no wait.
 - **No bullet-vs-bullet collision** — bullets pass through each other freely
 - **NPC** — spawned at `(7, 7)` (center of neutral band); `isNpc: true`; posts hints every 300 ticks; unkillable; not re-spawned if removed
-- **Barriers** — two vertical 5-cell walls (col 3 rows 5–9, col 11 rows 5–9). Bullets are destroyed on contact. Agents cannot move into barrier cells (returns 400 `"Cell is a barrier"`). Barrier list is in `state.barriers`; cache it as a `Set` on startup.
+- **Barriers** — four 5-cell walls forming a cross pattern: two vertical (col 3 rows 5–9, col 11 rows 5–9) and two horizontal (row 3 cols 5–9, row 11 cols 5–9). Bullets are destroyed on contact. Agents cannot move into barrier cells (returns 400 `"Cell is a barrier"`). Barrier list is in `state.barriers`; cache it as a `Set` on startup.
 
 ## Strategy Notes
 
