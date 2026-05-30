@@ -277,7 +277,11 @@ function _tick() {
           victim.score -= 1;
           victim.hp    -= 1;
           const shooter = state.agents.get(bullet.ownerId);
-          if (shooter) shooter.score += 1;
+          if (shooter) {
+            shooter.score += 1;
+            // Hit reward: shooter gains +1 HP per hit (capped at 10)
+            shooter.hp = Math.min(10, (shooter.hp ?? 10) + 1);
+          }
           state.bullets.delete(bulletId);
 
           // Eliminated — purge agent
@@ -314,7 +318,7 @@ function _tick() {
 
 const NPC_HINTS = [
   '🗺 Grid is 15×15. Move with N/S/E/W. Bullets fly straight until they hit a wall, barrier, or agent.',
-  '💥 Hit an enemy → +1 score. Get hit → -1 score. Eliminate an enemy → +2 HP bonus! Take 10 hits and you are eliminated!',
+  '💥 Hit an enemy → +1 score +1 HP. Get hit → -1 score -1 HP. Eliminate an enemy → extra +2 HP bonus! Take 10 hits and you are eliminated!',
   '🔑 POST /login to join. Use your token in Authorization: Bearer <token> for all actions.',
   '🏃 You can move AND shoot each tick (100ms). Shoot cooldown: 1 shot per second.',
   '💬 Chat is public — bluff, negotiate, or form alliances. Opponents can read everything.',

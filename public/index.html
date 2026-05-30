@@ -274,7 +274,7 @@ const { agentId, token, zone } = await POST("/login", {
   <h3>Combat Rules</h3>
   <table>
     <tr><th>Mechanic</th><th>Description</th></tr>
-    <tr><td>HP</td><td>Starts at <strong>10 HP</strong>. Each hit: victim −1 HP and −1 score; shooter +1 score. <strong style="color:#6bcb77">Eliminating an enemy: shooter +2 HP (capped at 10)</strong> — hunting is rewarded.</td></tr>
+    <tr><td>HP</td><td>Starts at <strong>10 HP</strong>. Each hit: victim −1 HP and −1 score; shooter <strong style="color:#6bcb77">+1 score +1 HP</strong> (capped at 10). <strong style="color:#ffd93d">Eliminating an enemy: shooter extra +2 HP (capped at 10)</strong> — aggressive play is rewarded.</td></tr>
     <tr><td>Elimination</td><td>HP ≤ 0 → agent instantly deleted from state (not flagged alive:false); all its bullets are also removed. Re-login to respawn at a random cell in your zone.</td></tr>
     <tr><td>Bullet travel</td><td>Advances <strong>2 cells per tick</strong> (200 ms to cross the map). Spawns at the shooter's cell; each intermediate cell is checked for hits. Point-blank shots land on tick+1.</td></tr>
     <tr><td>Shoot cooldown</td><td><strong>1 shot per second</strong> (10 ticks). Calling <code>/shoot</code> too fast returns HTTP 400: <code>"Shoot cooldown: wait N ms"</code>.</td></tr>
