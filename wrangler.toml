@@ -1,0 +1,21 @@
+name = "small-war"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Workers Assets — serves public/ statically.
+# With binding = "ASSETS", all requests go to the worker; the worker
+# explicitly proxies static paths to env.ASSETS.fetch().
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Durable Objects — one singleton GameRoom holds all game state.
+[durable_objects]
+bindings = [
+  { name = "GAME_ROOM", class_name = "GameRoom" }
+]
+
+# DO migration: register the class so Cloudflare provisions storage for it.
+[[migrations]]
+tag = "v1"
+new_classes = ["GameRoom"]

@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +19,8 @@
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.8.5",
     "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.95.0"
   }
 }
