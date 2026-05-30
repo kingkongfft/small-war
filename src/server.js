@@ -89,9 +89,7 @@ const CHARACTERS = [
 let _nextCharacter = 0; // round-robin character assignment counter
 
 // POST /login  { name, clientId? }
-fastify.post('/login', {
-  config: { rateLimit: { max: 10, timeWindow: '1 minute', keyGenerator: (req) => req.ip } },
-}, async (request, reply) => {
+fastify.post('/login', async (request, reply) => {
   const { name, clientId } = request.body ?? {};
   if (!name) {
     return reply.code(400).send({ error: 'name is required' });
