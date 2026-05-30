@@ -80,7 +80,7 @@ WS   /ws                                                     → push GameState 
 - `isNpc: true` agents are unkillable; bullets pass through them. Exclude from targeting.
 - NPC has no `zone`, no `hp`, no `lastShotTick` in state — reading these fields gives `undefined`.
 - `zone` (0–3) — agent's team zone. Bullets from the same zone pass through without damage.
-- Agents start with `hp: 30`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
+- Agents start with `hp: 10`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
 - `score` can go negative — do not clamp.
 
 ### Zone system

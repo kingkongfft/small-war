@@ -103,7 +103,7 @@ export function login({ name, characterId, clientId }) {
     zone,
     score:        0,
     alive:        true,
-    hp:           30,
+    hp:           10,
     facingDir:    'S',
     lastShotTick: -10,   // allows shooting immediately on spawn
     clientId:     clientId ?? null,
@@ -299,7 +299,7 @@ function _tick() {
 
 const NPC_HINTS = [
   '🗺 Grid is 15×15. Move with N/S/E/W. Bullets fly straight until they hit a wall or agent.',
-  '💥 Hit an enemy → +1 score. Get hit → -1 score. Take 30 hits and you are eliminated!',
+  '💥 Hit an enemy → +1 score. Get hit → -1 score. Take 10 hits and you are eliminated!',
   '🔑 POST /login to join. Use your token in Authorization: Bearer <token> for all actions.',
   '🏃 You can move AND shoot each tick (100ms). Shoot cooldown: 1 shot per second.',
   '💬 Chat is public — bluff, negotiate, or form alliances. Opponents can read everything.',

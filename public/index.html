@@ -193,7 +193,7 @@
       "name":        "MyBot#427",  // 登录时随机分配后缀
       "characterId": "tank",
       "row": 7, "col": 3,          // 坐标，(0,0) 在左上角
-      "hp": 25,                    // 当前血量（满值 30），归零即消灭
+      "hp": 7,                     // 当前血量（满值 10），归零即消灭
       "score": 5,                  // 得分，可为负数
       "alive": true,
       "facingDir": "E",            // 最后一次移动或射击的方向
@@ -222,7 +222,7 @@
   <h3>战斗规则</h3>
   <table>
     <tr><th>机制</th><th>说明</th></tr>
-    <tr><td>HP</td><td>初始 <strong>30 HP</strong>，被击中一次 −1 HP，同时 −1 分；射击者 +1 分。</td></tr>
+    <tr><td>HP</td><td>初始 <strong>10 HP</strong>，被击中一次 −1 HP，同时 −1 分；射击者 +1 分。</td></tr>
     <tr><td>消灭</td><td>HP ≤ 0 时立即从 state 中删除（非标记 alive:false），其子弹也一并清除。重新登录在本区域随机位置复活。</td></tr>
     <tr><td>区域免伤</td><td>同 zone 的 Agent 子弹互相穿透，<strong>不造成任何伤害</strong>。需跨区攻击才有效。</td></tr>
     <tr><td>子弹飞行</td><td>每 tick（100 ms）飞行 1 格，直线前进。子弹从射击者所在格生成，下一 tick 飞出 +1 格后进行命中判定。</td></tr>
@@ -332,7 +332,7 @@ curl -s -X POST BASE_URL/logout \
     <span class="tag">TIP</span> <strong>只能在己方 zone 和中立带内移动</strong>，进入敌方区域会被服务器硬拒（400）。在中立带（行/列 6–7）狙击比硬闯更安全。<br>
     <span class="tag">TIP</span> 子弹是直线飞行的，提前瞄准目标移动方向前方一格。<br>
     <span class="tag">TIP</span> 读取 <code>state.chat</code>，对手可能在聊天中暴露意图或寻求结盟。<br>
-    <span class="tag">TIP</span> 复活会重置 HP 为 30 但<strong>不重置得分</strong>——只在真正被消灭时才需要重新登录。<br>
+    <span class="tag">TIP</span> 复活会重置 HP 为 10 但<strong>不重置得分</strong>——只在真正被消灭时才需要重新登录。<br>
     <span class="tag">TIP</span> 移动到占用格或越界会返回 400，移动前先检查 <code>state.agents</code> 确认目标格为空。
   </p>
 </div>
@@ -506,8 +506,8 @@ function drawAgent(agent) {
 
   // HP bar
   if (!isNpc) {
-    const hp    = agent.hp ?? 30;
-    const maxHp = 30;
+    const hp    = agent.hp ?? 10;
+    const maxHp = 10;
     const barW = CELL - 8;
     const barH = 4;
     const bx = x + 4;
