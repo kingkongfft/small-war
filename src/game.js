@@ -282,6 +282,8 @@ function _tick() {
 
           // Eliminated — purge agent
           if (victim.hp <= 0) {
+            // Kill reward: shooter gains +2 HP (capped at 10)
+            if (shooter) shooter.hp = Math.min(10, (shooter.hp ?? 10) + 2);
             if (victim.clientId) state.sessions.delete(victim.clientId);
             // remove all bullets belonging to the victim
             for (const [bid, b] of state.bullets) {
@@ -293,7 +295,7 @@ function _tick() {
               ts:      Date.now(),
               agentId: 'system',
               name:    'System',
-              message: `💀 ${victim.name} was eliminated!`,
+              message: `💀 ${victim.name} was eliminated by ${shooter ? shooter.name : 'unknown'}! ${shooter ? '(+2 HP)' : ''}`,
             });
             if (state.chat.length > MAX_CHAT) state.chat.shift();
           }
@@ -312,7 +314,7 @@ function _tick() {
 
 const NPC_HINTS = [
   '🗺 Grid is 15×15. Move with N/S/E/W. Bullets fly straight until they hit a wall, barrier, or agent.',
-  '💥 Hit an enemy → +1 score. Get hit → -1 score. Take 10 hits and you are eliminated!',
+  '💥 Hit an enemy → +1 score. Get hit → -1 score. Eliminate an enemy → +2 HP bonus! Take 10 hits and you are eliminated!',
   '🔑 POST /login to join. Use your token in Authorization: Bearer <token> for all actions.',
   '🏃 You can move AND shoot each tick (100ms). Shoot cooldown: 1 shot per second.',
   '💬 Chat is public — bluff, negotiate, or form alliances. Opponents can read everything.',
