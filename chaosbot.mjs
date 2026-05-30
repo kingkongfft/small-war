@@ -1,4 +1,6 @@
-const BASE = 'http://localhost:3000';
+const BASE = process.argv[2] ?? 'http://localhost:3000';
+// Embed LLM model version in the login name so observers can identify the agent.
+const _BOT_NAME = process.env.LLM_MODEL ?? 'ChaosBot';
 
 const DIR = { N: [-1,0], S: [1,0], E: [0,1], W: [0,-1] };
 const ROWS = 15, COLS = 15;
@@ -42,7 +44,7 @@ const _CHARS = ['warrior', 'mage', 'archer', 'tank', 'rogue', 'paladin', 'ranger
 const _CHAR  = _CHARS[Math.floor(Math.random() * _CHARS.length)];
 
 const login = async () => {
-  const r = await api('/login', { name: 'ChaosBot', characterId: _CHAR });
+  const r = await api('/login', { name: _BOT_NAME, characterId: _CHAR });
   if (r.ok) { TOKEN = r.data.token; AGENT_ID = r.data.agentId; }
   return r.ok;
 };

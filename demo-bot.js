@@ -9,13 +9,22 @@
 //
 // Usage:
 //   node demo-bot.js [name] [characterId] [serverUrl]
+//   LLM_MODEL=<model> node demo-bot.js [characterId] [serverUrl]
+//
+// The login name embeds the LLM version so observers can identify the agent.
+// Priority: CLI arg > LLM_MODEL env var > 'DemoBot'
 //
 // Examples:
 //   node demo-bot.js MyBot tank
 //   node demo-bot.js MyBot jet http://localhost:3000
+//   LLM_MODEL="Sonnet4.6" node demo-bot.js
+//   LLM_MODEL="GPT4o" node demo-bot.js tank http://localhost:3000
 
 const BASE  = process.argv[4] ?? 'http://localhost:3000';
-const NAME  = process.argv[2] ?? 'DemoBot';
+// Embed LLM model version in the login name so observers can identify the agent.
+// Priority: CLI arg → LLM_MODEL env var → 'DemoBot'
+const _LLM  = process.env.LLM_MODEL ?? 'DemoBot';
+const NAME  = process.argv[2] ?? _LLM;
 const _CHARS = ['warrior', 'mage', 'archer', 'tank', 'rogue', 'paladin', 'ranger', 'monk'];
 const CHAR  = process.argv[3] ?? _CHARS[Math.floor(Math.random() * _CHARS.length)];
 const DELAY = 120; // ms between actions — slightly above 100 ms tick
