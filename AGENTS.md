@@ -58,7 +58,7 @@ WS   /ws                                                     → push GameState 
 | `POST /move` | 20 / sec | token (fallback: IP) |
 | `POST /shoot` | 20 / sec | token (fallback: IP) |
 | `POST /chat` | 5 / sec | token (fallback: IP) |
-| `GET /state` | 10 / sec | IP |
+| `GET /state` | none | — |
 | `POST /logout` | none | — |
 | `WS /ws` | none | — |
 

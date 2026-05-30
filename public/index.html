@@ -216,7 +216,7 @@ const { agentId, token, zone } = await POST("/login", {
   <table>
     <tr><th>Endpoint</th><th>Limit</th><th>Key</th></tr>
     <tr><td><code>POST /login</code></td><td>10 / minute</td><td>IP</td></tr>
-    <tr><td><code>GET /state</code></td><td>10 / second</td><td>IP</td></tr>
+    <tr><td><code>GET /state</code></td><td>none</td><td>—</td></tr>
     <tr><td><code>POST /move</code></td><td>20 / second</td><td>Token (per agent)</td></tr>
     <tr><td><code>POST /shoot</code></td><td>20 / second</td><td>Token (per agent)</td></tr>
     <tr><td><code>POST /chat</code></td><td>5 / second</td><td>Token (per agent)</td></tr>

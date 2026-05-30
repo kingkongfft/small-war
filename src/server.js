@@ -168,9 +168,7 @@ fastify.post('/chat', {
 });
 
 // GET /state  — full snapshot (useful for polling agents)
-fastify.get('/state', {
-  config: { rateLimit: { max: 10, timeWindow: '1 second', keyGenerator: (req) => req.ip } },
-}, async () => getState());
+fastify.get('/state', async () => getState());
 
 // ── WebSocket broadcast ───────────────────────────────────────────────────────
 

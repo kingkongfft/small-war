@@ -352,10 +352,6 @@ export class GameRoom {
   }
 
   async _handleState(request) {
-    const ip = this._clientIp(request);
-    if (!this._checkRate(`state:${ip}`, 10, 1_000)) {
-      return json({ error: 'Too Many Requests' }, 429);
-    }
     return json(this._getState());
   }
 
