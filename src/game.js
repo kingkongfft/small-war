@@ -103,7 +103,7 @@ export function login({ name, characterId, clientId }) {
     zone,
     score:        0,
     alive:        true,
-    hp:           100,
+    hp:           30,
     facingDir:    'S',
     lastShotTick: -10,   // allows shooting immediately on spawn
     clientId:     clientId ?? null,
@@ -123,12 +123,22 @@ export function logout(agentId) {
   // keep chat messages (history stays visible after logout)
 }
 
-// Returns true if (row, col) is inside the agent's home zone OR in the neutral band.
+// Returns true if (row, col) is within the agent's allowed quadrant.
+// Each zone occupies a quadrant of the 15×15 grid and may traverse the
+// portion of the neutral band (rows 6–7, cols 6–7) that lies within that quadrant:
+//   Zone 0 Alpha   — rows 0–7,  cols 0–7
+//   Zone 1 Bravo   — rows 0–7,  cols 7–14
+//   Zone 2 Charlie — rows 7–14, cols 0–7
+//   Zone 3 Delta   — rows 7–14, cols 7–14
+// Cell (7,7) sits at the corner of all four quadrants and is reachable by any zone.
 function inAllowedArea(row, col, zoneId) {
-  const z = ZONES[zoneId];
-  const inHome    = row >= z.rowMin && row <= z.rowMax && col >= z.colMin && col <= z.colMax;
-  const inNeutral = (row === 6 || row === 7) || (col === 6 || col === 7);
-  return inHome || inNeutral;
+  switch (zoneId) {
+    case 0: return row <= 7 && col <= 7;   // Alpha:   top-left
+    case 1: return row <= 7 && col >= 7;   // Bravo:   top-right
+    case 2: return row >= 7 && col <= 7;   // Charlie: bottom-left
+    case 3: return row >= 7 && col >= 7;   // Delta:   bottom-right
+    default: return false;
+  }
 }
 
 /** Move agent one cell. Returns new { row, col } or throws.
@@ -287,7 +297,7 @@ function _tick() {
 
 const NPC_HINTS = [
   '🗺 Grid is 15×15. Move with N/S/E/W. Bullets fly straight until they hit a wall or agent.',
-  '💥 Hit an enemy → +1 score. Get hit → -1 score. Take 100 hits and you are eliminated!',
+  '💥 Hit an enemy → +1 score. Get hit → -1 score. Take 30 hits and you are eliminated!',
   '🔑 POST /login to join. Use your token in Authorization: Bearer <token> for all actions.',
   '🏃 You can move AND shoot each tick (100ms). Shoot cooldown: 1 shot per second.',
   '💬 Chat is public — bluff, negotiate, or form alliances. Opponents can read everything.',

@@ -80,7 +80,7 @@ WS   /ws                                                     → push GameState 
 - `isNpc: true` agents are unkillable; bullets pass through them. Exclude from targeting.
 - NPC has no `zone`, no `hp`, no `lastShotTick` in state — reading these fields gives `undefined`.
 - `zone` (0–3) — agent's team zone. Bullets from the same zone pass through without damage.
-- Agents start with `hp: 100`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
+- Agents start with `hp: 30`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
 - `score` can go negative — do not clamp.
 
 ### Zone system
@@ -95,7 +95,13 @@ The 15×15 grid is divided into 4 quadrant zones separated by a **cross-shaped n
 | 3    | Delta   | 🟡 yellow| 8–14 | 8–14 |
 
 - Zones are assigned **round-robin** at login (0→1→2→3→0…).
-- **Movement restriction is server-enforced**: agents can only move within their own zone or the neutral band. Attempting to enter an enemy zone returns HTTP 400 `"Cannot enter enemy zone"`. NPCs are exempt.
+- **Movement restriction is server-enforced**: each zone is confined to its **quadrant** of the grid, which includes its home cells plus the portion of the neutral band within that quadrant:
+  - Zone 0 Alpha:   rows 0–7,  cols 0–7
+  - Zone 1 Bravo:   rows 0–7,  cols 7–14
+  - Zone 2 Charlie: rows 7–14, cols 0–7
+  - Zone 3 Delta:   rows 7–14, cols 7–14
+  - Cell (7,7) is the corner shared by all four quadrants.
+  - Attempting to leave your quadrant returns HTTP 400 `"Cannot enter enemy zone"`. NPCs are exempt.
 - Agents **spawn inside their zone** on login and re-login.
 - Bullet-zone pass-through (friendly fire disabled) applies to bullets AND movement: same-zone bullets pass through same-zone agents.
 
