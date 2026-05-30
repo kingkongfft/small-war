@@ -95,13 +95,7 @@ The 15×15 grid is divided into 4 quadrant zones separated by a **cross-shaped n
 | 3    | Delta   | 🟡 yellow| 8–14 | 8–14 |
 
 - Zones are assigned **round-robin** at login (0→1→2→3→0…).
-- **Movement restriction is server-enforced**: each zone is confined to its **quadrant** of the grid, which includes its home cells plus the portion of the neutral band within that quadrant:
-  - Zone 0 Alpha:   rows 0–7,  cols 0–7
-  - Zone 1 Bravo:   rows 0–7,  cols 7–14
-  - Zone 2 Charlie: rows 7–14, cols 0–7
-  - Zone 3 Delta:   rows 7–14, cols 7–14
-  - Cell (7,7) is the corner shared by all four quadrants.
-  - Attempting to leave your quadrant returns HTTP 400 `"Cannot enter enemy zone"`. NPCs are exempt.
+- **No movement restriction** — agents may roam the entire 15×15 grid freely. Zone only affects friendly-fire (same-zone bullets pass through) and spawn position.
 - Agents **spawn inside their zone** on login and re-login.
 - Bullet-zone pass-through (friendly fire disabled) applies to bullets AND movement: same-zone bullets pass through same-zone agents.
 

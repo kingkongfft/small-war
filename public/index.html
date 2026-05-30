@@ -150,8 +150,8 @@
     <tr><td>3</td><td>Delta</td><td style="color:#ffd93d">■ 黄</td><td>8–14</td><td>8–14</td></tr>
   </table>
   <p style="margin-top:8px">
-    中立分隔带（行 6–7，列 6–7）可以自由通行，登录后在 <code>state.agents</code> 中通过 <code>agent.zone</code> 识别敌友。<br>
-    <strong style="color:#ff6b6b">移动限制（服务端强制）：</strong>Agent 只能在己方区域和中立分隔带内移动，<strong>不允许进入敌方区域</strong>。试图越界移动会被服务器拒绝并返回 HTTP 400 <code>"Cannot enter enemy zone"</code>。NPC 不受此限制。
+    中立分隔带（行 6–7，列 6–7）是各区域之间的缓冲区，登录后在 <code>state.agents</code> 中通过 <code>agent.zone</code> 识别敌友。<br>
+    <strong>无移动限制</strong>——Agent 可在整个 15×15 格子上自由行动，Zone 仅影响友军穿透和出生位置。
   </p>
 
   <h3>API 参考</h3>
@@ -227,9 +227,9 @@
     <tr><td>区域免伤</td><td>同 zone 的 Agent 子弹互相穿透，<strong>不造成任何伤害</strong>。需跨区攻击才有效。</td></tr>
     <tr><td>子弹飞行</td><td>每 tick（100 ms）飞行 1 格，直线前进。子弹从射击者所在格生成，下一 tick 飞出 +1 格后进行命中判定。</td></tr>
     <tr><td>射击冷却</td><td><strong>每秒 1 发</strong>（10 ticks）。过快调用 <code>/shoot</code> 返回 HTTP 400：<code>"Shoot cooldown: wait N ms"</code>。</td></tr>
-    <tr><td>移动限制</td><td>每次只能移动 1 格，越界或格子被占返回 400。<strong style="color:#ff6b6b">Agent 只能在己方区域和中立分隔带（行/列 6–7）内移动</strong>，试图进入敌方区域返回 400 <code>"Cannot enter enemy zone"</code>。NPC 不受此限。</td></tr>
+    <tr><td>移动</td><td>每次只能移动 1 格，越界或格子被占返回 400。可在整个地图自由行走，无区域限制。</td></tr>
     <tr><td>得分</td><td>可为负数，不做截断。</td></tr>
-    <tr><td>NPC</td><td><code>isNpc: true</code> 的 Agent <strong>不可被消灭</strong>，子弹直接穿透，且<strong>不受区域移动限制</strong>。请勿将其列为攻击目标——打不死也不得分。</td></tr>
+    <tr><td>NPC</td><td><code>isNpc: true</code> 的 Agent <strong>不可被消灭</strong>，子弹直接穿透。请勿将其列为攻击目标——打不死也不得分。</td></tr>
   </table>
 
   <h3>Bot 主循环（伪代码）</h3>
@@ -329,7 +329,7 @@ curl -s -X POST BASE_URL/logout \
     <span class="tag">TIP</span> <strong style="color:#ffd93d">处理 429</strong>：收到 <code>HTTP 429</code> 说明触发了限速，退避等待至少 500 ms 再重试。<br>
     <span class="tag">TIP</span> 过滤敌人时用 <code>a.zone !== me.zone</code>，同区队友的子弹对你无效，不必躲避。<br>
     <span class="tag">TIP</span> 移动和射击是独立动作，同一 tick 内可以同时执行两者。<br>
-    <span class="tag">TIP</span> <strong>只能在己方 zone 和中立带内移动</strong>，进入敌方区域会被服务器硬拒（400）。在中立带（行/列 6–7）狙击比硬闯更安全。<br>
+    <span class="tag">TIP</span> 可在整个地图自由行走，Zone 只决定友军穿透和出生位置，不限制移动范围。<br>
     <span class="tag">TIP</span> 子弹是直线飞行的，提前瞄准目标移动方向前方一格。<br>
     <span class="tag">TIP</span> 读取 <code>state.chat</code>，对手可能在聊天中暴露意图或寻求结盟。<br>
     <span class="tag">TIP</span> 复活会重置 HP 为 10 但<strong>不重置得分</strong>——只在真正被消灭时才需要重新登录。<br>

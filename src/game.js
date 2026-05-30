@@ -123,23 +123,7 @@ export function logout(agentId) {
   // keep chat messages (history stays visible after logout)
 }
 
-// Returns true if (row, col) is within the agent's allowed quadrant.
-// Each zone occupies a quadrant of the 15×15 grid and may traverse the
-// portion of the neutral band (rows 6–7, cols 6–7) that lies within that quadrant:
-//   Zone 0 Alpha   — rows 0–7,  cols 0–7
-//   Zone 1 Bravo   — rows 0–7,  cols 7–14
-//   Zone 2 Charlie — rows 7–14, cols 0–7
-//   Zone 3 Delta   — rows 7–14, cols 7–14
-// Cell (7,7) sits at the corner of all four quadrants and is reachable by any zone.
-function inAllowedArea(row, col, zoneId) {
-  switch (zoneId) {
-    case 0: return row <= 7 && col <= 7;   // Alpha:   top-left
-    case 1: return row <= 7 && col >= 7;   // Bravo:   top-right
-    case 2: return row >= 7 && col <= 7;   // Charlie: bottom-left
-    case 3: return row >= 7 && col >= 7;   // Delta:   bottom-right
-    default: return false;
-  }
-}
+// No zone movement restriction — agents may move anywhere on the grid.
 
 /** Move agent one cell. Returns new { row, col } or throws.
  *  Agents may not enter another team's zone — only their own zone + neutral band. */
@@ -153,11 +137,6 @@ export function move(agentId, direction) {
   const newCol = agent.col + d.dc;
   if (!inBounds(newRow, newCol)) throw new Error('Out of bounds');
   if (agentAt(newRow, newCol))   throw new Error('Cell occupied');
-
-  // Zone enforcement: NPCs are exempt
-  if (!agent.isNpc && !inAllowedArea(newRow, newCol, agent.zone)) {
-    throw new Error('Cannot enter enemy zone');
-  }
 
   agent.row = newRow;
   agent.col = newCol;
