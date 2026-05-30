@@ -3,9 +3,10 @@
 //
 // Strategy:
 //   1. Poll /state every tick (100 ms)
-//   2. Find the nearest living enemy (non-NPC, not self)
+//   2. Prefer wounded / easy-to-finish living enemies (non-NPC, not self)
 //   3. Shoot when aligned and no barrier blocks the path
 //   4. Otherwise move closer while avoiding barriers and occupied cells
+//   5. Patrol when alone so the bot stays active between fights
 //
 // Usage:
 //   node demo-bot.js [name] [characterId] [serverUrl]
@@ -33,6 +34,7 @@ const DIR = {
   W: { dr: 0, dc: -1 },
 };
 const DIRS = Object.keys(DIR);
+const OPPOSITE_DIR = { N: 'S', S: 'N', E: 'W', W: 'E' };
 
 function randomCharacter() {
   return _CHARS[Math.floor(Math.random() * _CHARS.length)];
@@ -167,6 +169,24 @@ function shotBlockedByBarrier(me, target, state) {
   return false;
 }
 
+function targetScore(me, enemy, state) {
+  const distance = manhattan(me, enemy);
+  const enemyHp = enemy.hp ?? 10;
+  const myHp = me.hp ?? 10;
+  const clearShot = aligned(me, enemy) && !shotBlockedByBarrier(me, enemy, state);
+
+  let score = distance;
+  score += enemyHp * 2;
+  if (clearShot) score -= 6;
+  if (enemyHp <= 2) score -= 5;
+  if (myHp <= 4) score -= Math.max(0, 5 - enemyHp);
+  return score;
+}
+
+function chooseTarget(me, enemies, state) {
+  return [...enemies].sort((a, b) => targetScore(me, a, state) - targetScore(me, b, state))[0] ?? null;
+}
+
 function moveCandidates(me, target) {
   const dirs = [];
   const dr = target.row - me.row;
@@ -184,27 +204,39 @@ function moveCandidates(me, target) {
   return dirs;
 }
 
-function chooseMove(me, target, state, selfId) {
+function moveScore(next, dir, target, context) {
+  let score = manhattan(next, target) * 10;
+  if (context.lastMoveDir && OPPOSITE_DIR[context.lastMoveDir] === dir) score += 7;
+  if (context.recentCells.has(`${next.row},${next.col}`)) score += 4;
+  return score;
+}
+
+function chooseMove(me, target, state, selfId, context) {
   let best = null;
 
   for (const dir of moveCandidates(me, target)) {
     const next = step(me, dir);
     if (isBlocked(next.row, next.col, state, selfId)) continue;
 
-    const distance = manhattan(next, target);
-    if (!best || distance < best.distance) best = { dir, distance };
+    const score = moveScore(next, dir, target, context);
+    if (!best || score < best.score) best = { dir, score };
   }
 
   return best?.dir ?? null;
 }
 
-function choosePatrolMove(me, state, selfId) {
-  const shuffled = [...DIRS].sort(() => Math.random() - 0.5);
-  for (const dir of shuffled) {
+function choosePatrolMove(me, state, selfId, context) {
+  let best = null;
+  for (const dir of DIRS) {
     const next = step(me, dir);
-    if (!isBlocked(next.row, next.col, state, selfId)) return dir;
+    if (isBlocked(next.row, next.col, state, selfId)) continue;
+
+    let score = 0;
+    if (context.lastMoveDir && OPPOSITE_DIR[context.lastMoveDir] === dir) score += 3;
+    if (context.recentCells.has(`${next.row},${next.col}`)) score += 2;
+    if (!best || score < best.score) best = { dir, score };
   }
-  return null;
+  return best?.dir ?? null;
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
@@ -231,6 +263,16 @@ async function run() {
   });
 
   let lastAction = '';
+  let lastMoveDir = null;
+  const recentCells = new Set();
+
+  function rememberCell(row, col) {
+    recentCells.add(`${row},${col}`);
+    if (recentCells.size > 6) {
+      const first = recentCells.values().next().value;
+      recentCells.delete(first);
+    }
+  }
 
   while (true) {
     if (Number.isFinite(RUN_MS) && RUN_MS > 0 && Date.now() - startedAt >= RUN_MS) {
@@ -260,6 +302,8 @@ async function run() {
         Object.assign(loginData, re);
         ({ agentId, token } = loginData);
         myZone = loginData.zone;
+        lastMoveDir = null;
+        recentCells.clear();
         console.log(`Respawned as ${loginData.name} (${agentId}) zone=${myZone}`);
       } catch (e) {
         console.error('Re-login failed:', e.message);
@@ -267,15 +311,29 @@ async function run() {
       continue;
     }
 
-    // Find nearest enemy (exclude self and NPCs)
+    // Find enemy target (exclude self and NPCs)
     const enemies = state.agents.filter(a => a.agentId !== agentId && !a.isNpc);
+    rememberCell(me.row, me.col);
+
     if (enemies.length === 0) {
-      if (lastAction !== 'idle') { console.log('No enemies — waiting…'); lastAction = 'idle'; }
+      const dir = choosePatrolMove(me, state, agentId, { lastMoveDir, recentCells });
+      if (!dir) {
+        if (lastAction !== 'idle') { console.log('No enemies — waiting…'); lastAction = 'idle'; }
+        continue;
+      }
+
+      try {
+        await post('/move', { direction: dir }, token);
+        lastMoveDir = dir;
+        const action = `PATROL ${dir} (me=${me.row},${me.col})`;
+        if (action !== lastAction) { console.log(action); lastAction = action; }
+      } catch (e) {
+        console.error('Patrol failed:', e.message);
+      }
       continue;
     }
 
-    enemies.sort((a, b) => manhattan(me, a) - manhattan(me, b));
-    const target = enemies[0];
+    const target = chooseTarget(me, enemies, state);
 
     try {
       if (aligned(me, target) && !shotBlockedByBarrier(me, target, state) && canShoot(me, state)) {
@@ -283,13 +341,18 @@ async function run() {
         await post('/shoot', { direction: dir }, token);
         const action = `SHOOT ${dir} -> ${target.name} (${target.row},${target.col})`;
         if (action !== lastAction) { console.log(action); lastAction = action; }
+      } else if (aligned(me, target) && !shotBlockedByBarrier(me, target, state) && !canShoot(me, state)) {
+        const action = `HOLD lane vs ${target.name} (${target.row},${target.col})`;
+        if (action !== lastAction) { console.log(action); lastAction = action; }
       } else {
-        const dir = chooseMove(me, target, state, agentId) ?? choosePatrolMove(me, state, agentId);
+        const dir = chooseMove(me, target, state, agentId, { lastMoveDir, recentCells })
+          ?? choosePatrolMove(me, state, agentId, { lastMoveDir, recentCells });
         if (!dir) {
           if (lastAction !== 'idle') { console.log('No safe move available'); lastAction = 'idle'; }
           continue;
         }
         await post('/move', { direction: dir }, token);
+        lastMoveDir = dir;
         const action = `MOVE ${dir} (me=${me.row},${me.col} -> target=${target.row},${target.col})`;
         if (action !== lastAction) { console.log(action); lastAction = action; }
       }
