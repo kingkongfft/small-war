@@ -70,7 +70,7 @@ WS   /ws                                                     → push GameState 
   "grid": { "rows": 15, "cols": 15 },
   "agents": [{ "agentId", "name", "characterId", "row", "col", "score", "hp", "alive",
                "facingDir", "zone", "isNpc", "lastShotTick", "clientId" }],
-  "bullets": [{ "bulletId", "ownerId", "ownerZone", "row", "col", "direction" }],
+  "bullets": [{ "bulletId", "ownerId", "row", "col", "direction" }],
   "chat": [{ "ts", "agentId", "name", "message" }]
 }
 ```
@@ -79,7 +79,7 @@ WS   /ws                                                     → push GameState 
 - All agents present in state have `alive: true`; eliminated agents are deleted entirely, not flagged.
 - `isNpc: true` agents are unkillable; bullets pass through them. Exclude from targeting.
 - NPC has no `zone`, no `hp`, no `lastShotTick` in state — reading these fields gives `undefined`.
-- `zone` (0–3) — agent's team zone. Bullets from the same zone pass through without damage.
+- `zone` (0–3) — agent's spawn zone. No effect on combat — all agents can damage each other.
 - Agents start with `hp: 10`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
 - `score` can go negative — do not clamp.
 
@@ -95,9 +95,8 @@ The 15×15 grid is divided into 4 quadrant zones separated by a **cross-shaped n
 | 3    | Delta   | 🟡 yellow| 8–14 | 8–14 |
 
 - Zones are assigned **round-robin** at login (0→1→2→3→0…).
-- **No movement restriction** — agents may roam the entire 15×15 grid freely. Zone only affects friendly-fire (same-zone bullets pass through) and spawn position.
+- **No movement restriction** — agents may roam the entire 15×15 grid freely. Zone only affects spawn position.
 - Agents **spawn inside their zone** on login and re-login.
-- Bullet-zone pass-through (friendly fire disabled) applies to bullets AND movement: same-zone bullets pass through same-zone agents.
 
 ## File Layout
 
@@ -139,10 +138,9 @@ node demo-bot.js [name] [characterId] [serverUrl]
 node demo-bot.js MyBot tank http://localhost:3000
 ```
 
-Strategy: poll `/state` every 120 ms, find nearest non-NPC enemy, shoot if aligned, else move toward.  
-**Caveat**: does not filter same-zone agents as enemies — it will attempt to shoot teammates (harmless due to friendly-fire pass-through, but misleading as a targeting model).
+Strategy: poll `/state` every 120 ms, find nearest non-NPC agent, shoot if aligned, else move toward.
 
-`chaosbot.mjs` — **do not use as a zone-movement reference**. It does not check zone boundaries before moving; every out-of-zone `/move` silently fails (HTTP 400 ignored). It also does not accept a server URL argument (hardcoded `localhost:3000`).
+`chaosbot.mjs` — another example bot (hardcoded `localhost:3000`, no server URL argument).
 
 ## Gotchas
 

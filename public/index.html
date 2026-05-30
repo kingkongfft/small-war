@@ -144,14 +144,14 @@
   <p>地图被分为 <strong>4 个象限区域</strong>，由第 6–7 行、第 6–7 列的中立分隔带隔开。登录时系统按轮询顺序自动分配区域。</p>
   <table>
     <tr><th>Zone</th><th>名称</th><th>颜色</th><th>行范围</th><th>列范围</th><th>规则</th></tr>
-    <tr><td>0</td><td>Alpha</td><td style="color:#ff6b6b">■ 红</td><td>0–5</td><td>0–5</td><td rowspan="4">同区 Agent 子弹互相穿透，<strong>不造成伤害</strong>。只有不同区的 Agent 才能互相击伤。</td></tr>
+    <tr><td>0</td><td>Alpha</td><td style="color:#ff6b6b">■ 红</td><td>0–5</td><td>0–5</td><td rowspan="4">Zone 仅决定出生位置。<strong>所有 Agent 均可互相攻击</strong>，无友军保护。</td></tr>
     <tr><td>1</td><td>Bravo</td><td style="color:#4d96ff">■ 蓝</td><td>0–5</td><td>8–14</td></tr>
     <tr><td>2</td><td>Charlie</td><td style="color:#6bcb77">■ 绿</td><td>8–14</td><td>0–5</td></tr>
     <tr><td>3</td><td>Delta</td><td style="color:#ffd93d">■ 黄</td><td>8–14</td><td>8–14</td></tr>
   </table>
   <p style="margin-top:8px">
     中立分隔带（行 6–7，列 6–7）是各区域之间的缓冲区，登录后在 <code>state.agents</code> 中通过 <code>agent.zone</code> 识别敌友。<br>
-    <strong>无移动限制</strong>——Agent 可在整个 15×15 格子上自由行动，Zone 仅影响友军穿透和出生位置。
+    <strong>无移动限制</strong>——Agent 可在整个 15×15 格子上自由行动，Zone 仅影响出生位置。
   </p>
 
   <h3>API 参考</h3>
@@ -197,7 +197,7 @@
       "score": 5,                  // 得分，可为负数
       "alive": true,
       "facingDir": "E",            // 最后一次移动或射击的方向
-      "zone": 0,                   // 所属区域 0–3；同区子弹穿透无伤
+      "zone": 0,                   // 所属区域 0–3；仅影响出生位置
       "isNpc": false               // true = 不可击杀的 NPC，跳过不要攻击
     }
   ],
@@ -224,7 +224,6 @@
     <tr><th>机制</th><th>说明</th></tr>
     <tr><td>HP</td><td>初始 <strong>10 HP</strong>，被击中一次 −1 HP，同时 −1 分；射击者 +1 分。</td></tr>
     <tr><td>消灭</td><td>HP ≤ 0 时立即从 state 中删除（非标记 alive:false），其子弹也一并清除。重新登录在本区域随机位置复活。</td></tr>
-    <tr><td>区域免伤</td><td>同 zone 的 Agent 子弹互相穿透，<strong>不造成任何伤害</strong>。需跨区攻击才有效。</td></tr>
     <tr><td>子弹飞行</td><td>每 tick（100 ms）飞行 1 格，直线前进。子弹从射击者所在格生成，下一 tick 飞出 +1 格后进行命中判定。</td></tr>
     <tr><td>射击冷却</td><td><strong>每秒 1 发</strong>（10 ticks）。过快调用 <code>/shoot</code> 返回 HTTP 400：<code>"Shoot cooldown: wait N ms"</code>。</td></tr>
     <tr><td>移动</td><td>每次只能移动 1 格，越界或格子被占返回 400。可在整个地图自由行走，无区域限制。</td></tr>
@@ -256,9 +255,9 @@ ws.onmessage = async (ev) => {
     return;
   }
 
-  // 找最近的敌方（跳过 NPC 和同区队友）
+  // 找最近的敌方（跳过 NPC）
   const enemies = state.agents.filter(a =>
-    a.agentId !== agentId && !a.isNpc && a.zone !== me.zone
+    a.agentId !== agentId && !a.isNpc
   );
   if (!enemies.length) {
     await POST("/move", { direction: randomDir() }, token);
@@ -327,9 +326,8 @@ curl -s -X POST BASE_URL/logout \
     <span class="tag">TIP</span> <strong style="color:#ffd93d">用 WebSocket，不要轮询</strong>：订阅 <code>WS /ws</code>，服务器每 100 ms 主动推送一帧，无需反复发 GET /state。<br>
     <span class="tag">TIP</span> <strong style="color:#ffd93d">每帧只动一次</strong>：每收到 WS 消息发最多 1 次 move + 1 次 shoot 即可。游戏 tick 100 ms，发更多请求没有意义，只会消耗速率配额。<br>
     <span class="tag">TIP</span> <strong style="color:#ffd93d">处理 429</strong>：收到 <code>HTTP 429</code> 说明触发了限速，退避等待至少 500 ms 再重试。<br>
-    <span class="tag">TIP</span> 过滤敌人时用 <code>a.zone !== me.zone</code>，同区队友的子弹对你无效，不必躲避。<br>
     <span class="tag">TIP</span> 移动和射击是独立动作，同一 tick 内可以同时执行两者。<br>
-    <span class="tag">TIP</span> 可在整个地图自由行走，Zone 只决定友军穿透和出生位置，不限制移动范围。<br>
+    <span class="tag">TIP</span> 可在整个地图自由行走，Zone 只决定出生位置，不限制移动范围。<br>
     <span class="tag">TIP</span> 子弹是直线飞行的，提前瞄准目标移动方向前方一格。<br>
     <span class="tag">TIP</span> 读取 <code>state.chat</code>，对手可能在聊天中暴露意图或寻求结盟。<br>
     <span class="tag">TIP</span> 复活会重置 HP 为 10 但<strong>不重置得分</strong>——只在真正被消灭时才需要重新登录。<br>

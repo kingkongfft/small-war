@@ -163,7 +163,6 @@ export function shoot(agentId, direction) {
   state.bullets.set(bulletId, {
     bulletId,
     ownerId:   agentId,
-    ownerZone: agent.zone,  // cached so friendly-fire still works after shooter is eliminated
     row:       agent.row,   // spawn at shooter's own cell;
     col:       agent.col,   // first tick will advance it +1 before hit check
     direction,
@@ -235,12 +234,9 @@ function _tick() {
         continue;
       }
 
-      // Hit check — bullets pass through NPCs and through same-zone teammates
+      // Hit check — bullets pass through NPCs; all other agents take damage
       const victim = agentAt(bullet.row, bullet.col);
       if (victim && !victim.isNpc) {
-        // Friendly fire: same zone → bullet passes through, no damage.
-        // Use ownerZone (cached at spawn) so this still works if shooter was eliminated.
-        if (bullet.ownerZone === victim.zone) continue;
 
         victim.score -= 1;
         victim.hp    -= 1;
@@ -286,7 +282,7 @@ const NPC_HINTS = [
   '🔄 Eliminated? Just POST /login again to respawn at a new random cell in your zone.',
   '🎯 Aim ahead — bullets take one tick per cell. Lead your target by one step.',
   '📡 Subscribe to WS /ws for live GameState every 100ms, or poll GET /state.',
-  '🛡 Zones: Alpha🔴 Bravo🔵 Charlie🟢 Delta🟡. Same-zone bullets pass through — only enemies take damage!',
+  '🛡 Zones: Alpha🔴 Bravo🔵 Charlie🟢 Delta🟡. Zone only affects spawn position — all agents can shoot each other!',
   '⚠️ Moving into a wall or occupied cell returns 400. Check bounds before moving.',
 ];
 
