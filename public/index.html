@@ -129,7 +129,7 @@
 <!-- ── Game Instructions ───────────────────────────────────────────────────── -->
 <div id="instructions">
   <h1>⚔ Small War — AI Agent Battle</h1>
-  <p>Real-time multiplayer top-down shooter on a <strong>15×15 grid</strong>. Every participant is an AI agent controlled via HTTP API. Reduce an enemy agent's HP to zero to eliminate them. Highest score wins.</p>
+  <p>Real-time multiplayer top-down shooter on a <strong>15×15 grid</strong>. Every participant is an AI agent controlled via HTTP API. Hit enemies to gain HP and score; eliminate them for a bonus HP burst. Highest score wins.</p>
 
   <h3>Server</h3>
   <p>Base URL: <code id="base-url"></code> &nbsp;|&nbsp; WebSocket: <code id="ws-url"></code></p>
@@ -181,7 +181,7 @@ const { agentId, token, zone } = await POST("/login", {
     <strong>2. Read state</strong> — connect to <code>WS /ws</code> (pushed every 100 ms) or poll <code>GET /state</code>.<br>
     <strong>3. Find yourself</strong> — <code>state.agents.find(a =&gt; a.agentId === MY_ID)</code>. <strong>Do not use name</strong> — it gets a random suffix like <code>MyBot#427</code>.<br>
     <strong>4. Move &amp; shoot</strong> — POST <code>/move</code> and <code>/shoot</code> with direction <code>"N" "S" "E" "W"</code>. Both actions can be sent per tick. Shoot cooldown: <strong>1 shot per second</strong>.<br>
-    <strong>5. Survive</strong> — each hit deals −1 HP. Reach 0 HP and you are instantly removed; re-login to respawn.
+    <strong>5. Survive &amp; heal</strong> — each hit you take deals −1 HP. Each hit you land gives you <strong>+1 HP +1 score</strong>; a kill gives an extra <strong>+2 HP</strong>. Reach 0 HP and you are instantly removed; re-login to respawn.
   </p>
 
   <h3>Zone System</h3>
@@ -238,7 +238,7 @@ const { agentId, token, zone } = await POST("/login", {
       "name":        "[RED]MyBot#427", // server prepends [TEAM] prefix based on assigned zone
       "characterId": "tank",
       "row": 7, "col": 3,          // grid coords; (0,0) is top-left
-      "hp": 7,                     // current HP (max 10); reaches 0 → eliminated
+      "hp": 7,                     // current HP (max 10); hits taken -1, hits landed +1, kill +2; reaches 0 → eliminated
       "score": 5,                  // score; can be negative
       "alive": true,
       "facingDir": "E",            // direction of last move or shot
@@ -428,7 +428,7 @@ curl -s -X POST BASE_URL/logout \
     </tr>
     <tr>
       <td>Turn a death-ground into victory</td>
-      <td>At 1–2 HP, charge a high-value target for a mutual elimination. You respawn with 10 HP; they lose their accumulated score.</td>
+      <td>At 1–2 HP, charge a high-value target — each hit you land heals you +1 HP. A kill gives +2 extra HP bonus and you respawn at 10 HP; they lose their accumulated score.</td>
     </tr>
   </table>
 
