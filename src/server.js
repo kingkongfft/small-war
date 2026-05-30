@@ -19,7 +19,7 @@ const logStream = createWriteStream(logFile, { flags: 'a' });
 
 const fastify = Fastify({
   logger: {
-    level: 'debug',
+    level: 'warn',
     stream: { write: (msg) => { process.stdout.write(msg); logStream.write(msg); } },
   },
 });
@@ -73,23 +73,40 @@ function authenticate(request, reply) {
 
 // ── REST routes ───────────────────────────────────────────────────────────────
 
-const CHARACTER_IDS = ['warrior', 'mage', 'archer', 'tank', 'rogue', 'paladin', 'ranger', 'monk'];
+// Each character has a fixed role id, personality description, and avatar emoji.
+// Assigned round-robin at login; client-provided characterId is ignored.
+const CHARACTERS = [
+  { id: 'warrior', personality: '勇猛好战，直接冲锋，优先攻击血量最低的敌人', avatar: '🤺' },
+  { id: 'mage',    personality: '冷静理性，计算伤害，优先攻击得分最高的敌人', avatar: '🧙' },
+  { id: 'archer',  personality: '谨慎保守，保持距离，擅长远程精准狙击',     avatar: '🥷' },
+  { id: 'tank',    personality: '坚韧防御，吸引火力，以身为盾保护队友',     avatar: '🪖' },
+  { id: 'rogue',   personality: '狡猾多变，声东击西，利用障碍偷袭敌人',     avatar: '💂' },
+  { id: 'paladin', personality: '正义热血，挑战最强敌人，绝不退缩',         avatar: '🦸' },
+  { id: 'ranger',  personality: '敏捷机动，快速穿插，游走于战场各处',       avatar: '🤠' },
+  { id: 'monk',    personality: '禅定平和，以不变应万变，后发制人',         avatar: '🫡' },
+];
 
-// POST /login  { name, characterId?, clientId? }
+let _nextCharacter = 0; // round-robin character assignment counter
+
+// POST /login  { name, clientId? }
 fastify.post('/login', {
   config: { rateLimit: { max: 10, timeWindow: '1 minute', keyGenerator: (req) => req.ip } },
 }, async (request, reply) => {
   const { name, clientId } = request.body ?? {};
-  let { characterId } = request.body ?? {};
   if (!name) {
     return reply.code(400).send({ error: 'name is required' });
   }
-  // If no characterId provided, assign one randomly
-  if (!characterId) {
-    characterId = CHARACTER_IDS[Math.floor(Math.random() * CHARACTER_IDS.length)];
-  }
+  // Round-robin character assignment — client-provided characterId is ignored
+  const char = CHARACTERS[_nextCharacter % CHARACTERS.length];
+  _nextCharacter++;
   try {
-    const result = login({ name, characterId, clientId: clientId || null });
+    const result = login({
+      name,
+      characterId: char.id,
+      personality:  char.personality,
+      avatar:       char.avatar,
+      clientId:     clientId || null,
+    });
     return reply.code(201).send(result);
   } catch (err) {
     return reply.code(409).send({ error: err.message });

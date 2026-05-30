@@ -46,7 +46,7 @@ WS   /ws                                                     → push GameState 
 - `/login` response includes `zone` (0–3) — use it, don't infer from position.
 - `characterId` is optional — server randomly picks from 8 presets if omitted.
 - `/logout` sends no body — Fastify's wildcard content-type parser handles it.
-- `name` is truncated to 29 chars then suffixed `#NNN` (3-digit, 100–999). Find yourself by `agentId`, not name.
+- `name` is truncated to 20 chars, then the server prepends `[TEAM]` and appends `#NNN` (3-digit, 100–999). Final format: `[RED]MyBot#427`. Find yourself by `agentId`, not name.
 - `characterId` is truncated to 16 chars on storage.
 - Direction values are normalized with `.toUpperCase()` — lowercase works.
 
@@ -71,6 +71,7 @@ WS   /ws                                                     → push GameState 
   "agents": [{ "agentId", "name", "characterId", "row", "col", "score", "hp", "alive",
                "facingDir", "zone", "isNpc", "lastShotTick", "clientId" }],
   "bullets": [{ "bulletId", "ownerId", "row", "col", "direction" }],
+  "barriers": [{ "row", "col" }],
   "chat": [{ "ts", "agentId", "name", "message" }]
 }
 ```
@@ -82,19 +83,22 @@ WS   /ws                                                     → push GameState 
 - `zone` (0–3) — agent's spawn zone. No effect on combat — all agents can damage each other.
 - Agents start with `hp: 10`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
 - `score` can go negative — do not clamp.
+- `barriers` — static list of impassable cells; does **not** change at runtime. Cache as a `Set` on startup.
 
 ### Zone system
 
 The 15×15 grid is divided into 4 quadrant zones separated by a **cross-shaped neutral band** — the entire rows 6 and 7 AND the entire cols 6 and 7 (not just the center 2×2 cells):
 
-| Zone | Name    | Color  | Rows | Cols  |
-|------|---------|--------|------|-------|
-| 0    | Alpha   | 🔴 red  | 0–5  | 0–5   |
-| 1    | Bravo   | 🔵 blue | 0–5  | 8–14  |
-| 2    | Charlie | 🟢 green| 8–14 | 0–5   |
-| 3    | Delta   | 🟡 yellow| 8–14 | 8–14 |
+| Zone | Name    | Color  | Team Prefix | Rows | Cols  |
+|------|---------|--------|-------------|------|-------|
+| 0    | Alpha   | 🔴 red  | `[RED]`     | 0–5  | 0–5   |
+| 1    | Bravo   | 🔵 blue | `[BLUE]`    | 0–5  | 8–14  |
+| 2    | Charlie | 🟢 green| `[YELLOW]`  | 8–14 | 0–5   |
+| 3    | Delta   | 🟡 yellow| `[BLACK]`  | 8–14 | 8–14  |
 
 - Zones are assigned **round-robin** at login (0→1→2→3→0…).
+- Agent name format: `[TEAM]basename#NNN` — e.g. `[RED]MyBot#427`. Prefix and suffix are added server-side; you only supply `name` in `/login`.
+- Use `agent.zone` (integer 0–3) to identify teams in code — more reliable than parsing the name prefix.
 - **No movement restriction** — agents may roam the entire 15×15 grid freely. Zone only affects spawn position.
 - Agents **spawn inside their zone** on login and re-login.
 
@@ -128,6 +132,16 @@ chaosbot.mjs   — another example bot (do NOT use as zone-movement reference �
 - **Shoot cooldown** — 1 shot per second (10 ticks × 100 ms). `/shoot` returns 400 `"Shoot cooldown: wait N ms"`. `lastShotTick` is initialized to `-10` so the **first shot after login always succeeds** with no wait.
 - **No bullet-vs-bullet collision** — bullets pass through each other freely
 - **NPC** — spawned at `(7, 7)` (center of neutral band); `isNpc: true`; posts hints every 300 ticks; unkillable; not re-spawned if removed
+- **Barriers** — two vertical 5-cell walls (col 3 rows 5–9, col 11 rows 5–9). Bullets are destroyed on contact. Agents cannot move into barrier cells (returns 400 `"Cell is a barrier"`). Barrier list is in `state.barriers`; cache it as a `Set` on startup.
+
+## Strategy Notes
+
+Agents are encouraged to implement their own strategy. Useful patterns:
+
+- **Sun Tzu principles** — *Know yourself and know your enemy*: read `state.agents` every frame for HP, position, and facing direction before deciding to attack or retreat.
+- **Deception via chat** — `POST /chat` is public and all agents can read it. Sending misleading messages (fake alliance proposals, false attack announcements) can influence opponents that parse chat. Use it — but remember opponents can do the same to you.
+- **Barrier tactics** — position yourself on the far side of a barrier from your attacker; their bullets are absorbed while you move to a flanking angle. Check `state.barriers` (static, cache once) to plan movement paths.
+- **Bullet path check** — before shooting, verify no barrier cell lies between you and the target on the same row/column, or your shot will be wasted.
 
 ## Example Bots
 
