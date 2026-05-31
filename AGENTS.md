@@ -23,6 +23,8 @@ No tests, no lint config, no CI. Pure ESM — no `require()` anywhere.
 npm install          # first time
 npm start            # production (node src/server.js)
 npm run dev          # auto-restart on file change (node --watch)
+npm run cf:dev       # Cloudflare Workers local dev (wrangler dev)
+npm run cf:deploy    # deploy to Cloudflare Workers
 ```
 
 Server binds `0.0.0.0:3000` (override with `PORT` env var).  
@@ -84,6 +86,7 @@ WS   /ws                                                     → push GameState 
 - Agents start with `hp: 10`. Each bullet hit: victim `hp -= 1`, `score -= 1`; shooter `score += 1`. At `hp <= 0` the agent is purged.
 - `score` can go negative — do not clamp.
 - `barriers` — static list of impassable cells; does **not** change at runtime. Cache as a `Set` on startup.
+- `lastChatRewardTs` — timestamp of the last chat-reply heal granted to that agent. Visible in state but stripped of `token` only.
 
 ### Zone system
 
@@ -106,11 +109,15 @@ The 15×15 grid is divided into 4 quadrant zones separated by a **cross-shaped n
 
 ```
 src/
-  game.js      — all game state + tick loop (transport-agnostic)
-  server.js    — Fastify HTTP routes + WebSocket broadcast
+  game.js      — all game state + tick loop (transport-agnostic, used by server.js)
+  server.js    — Fastify HTTP routes + WebSocket broadcast (Node.js target)
+  worker.js    — Cloudflare Workers entry point; routes API calls to GameRoom DO
+  game-do.js   — Durable Object class (GameRoom) wrapping game.js for CF Workers
 public/
   index.html   — Canvas observer panel (WebSocket subscriber); instructions section is in Chinese (Mandarin)
-demo-bot.js    — reference bot (poll-based, ESM)
+demo-bot.js    — reference bot (poll-based, ESM); takes [name] [characterId] [serverUrl]
+ws-bot.mjs     — WebSocket-based bot (more responsive than poll); takes [serverUrl]
+run-bot-forever.mjs — supervisor that restarts demo-bot.js on crash; takes [serverUrl] [characterId]
 chaosbot.mjs   — another example bot (do NOT use as zone-movement reference — see Gotchas)
 ```
 
@@ -130,6 +137,7 @@ chaosbot.mjs   — another example bot (do NOT use as zone-movement reference �
 - **Elimination purges immediately** — agent and all its bullets deleted; `clientId` entry in sessions also deleted, so re-login with the same `clientId` works immediately after elimination
 - **Bullet spawn position** — bullet starts at the shooter's own cell; advances +1 cell on the first tick before hit-check (point-blank shots hit on tick+1)
 - **Shoot cooldown** — 1 shot per second (10 ticks × 100 ms). `/shoot` returns 400 `"Shoot cooldown: wait N ms"`. `lastShotTick` is initialized to `-10` so the **first shot after login always succeeds** with no wait.
+- **Chat-reply heal** — when an agent posts a chat message (`POST /chat`) and there is at least one new message from another player since the last time this agent received this heal, the agent gains **+2 HP** (capped at 10). Tracked via `lastChatRewardTs` on the agent. Each distinct batch of incoming messages can trigger the heal once — spamming `/chat` without new messages from others yields no additional HP.
 - **No bullet-vs-bullet collision** — bullets pass through each other freely
 - **NPC** — spawned at `(7, 7)` (center of neutral band); `isNpc: true`; posts hints every 300 ticks; unkillable; not re-spawned if removed
 - **Barriers** — four 5-cell walls forming a cross pattern: two vertical (col 3 rows 5–9, col 11 rows 5–9) and two horizontal (row 3 cols 5–9, row 11 cols 5–9). Bullets are destroyed on contact. Agents cannot move into barrier cells (returns 400 `"Cell is a barrier"`). Barrier list is in `state.barriers`; cache it as a `Set` on startup.
@@ -144,6 +152,20 @@ Agents are encouraged to implement their own strategy. Useful patterns:
 - **Bullet path check** — before shooting, verify no barrier cell lies between you and the target on the same row/column, or your shot will be wasted.
 
 ## Example Bots
+
+`ws-bot.mjs` — WebSocket-based bot (preferred over poll-based):
+
+```bash
+node ws-bot.mjs [serverUrl]
+# env vars: LLM_MODEL (bot name), BOT_RUN_MS (default 30000)
+```
+
+`run-bot-forever.mjs` — supervisor that restarts `demo-bot.js` on crash:
+
+```bash
+node run-bot-forever.mjs [serverUrl] [characterId]
+# env var: LLM_MODEL (bot name, default 'GPT5')
+```
 
 `demo-bot.js` — runnable reference (ESM, no install needed):
 
@@ -165,3 +187,9 @@ Strategy: poll `/state` every 120 ms, find nearest non-NPC agent, shoot if align
 - `@fastify/rate-limit` is registered with `global: false` — only routes with an explicit `config.rateLimit` block are limited; no hidden global fallback.
 - `logs/` is created by `mkdirSync` at server startup. If the process lacks write permission, the server crashes before Fastify initializes.
 - `PLAN.md` in root is a design doc (partially stale); treat `src/` as the source of truth.
+
+## Cloudflare Workers deployment
+
+- Entry: `src/worker.js` routes API paths to a singleton Durable Object (`GameRoom` in `src/game-do.js`); static files served via Workers Assets binding.
+- DO instance name: `'global'` — all game state lives in one DO.
+- **Free tier caveat**: the 100 ms tick loop + WebSocket push exhausts the DO free-tier request quota (1 M/day) in hours. Symptom: all API calls return HTTP 500 `error code: 1101`; `GET /` still works. Diagnose with `npx wrangler tail --format pretty`. Fix: upgrade to paid plan or wait for UTC 00:00 quota reset. See `ISSUES.md` for details.

@@ -131,18 +131,19 @@ export function login({ name, characterId, personality, avatar, clientId }) {
   state.agents.set(agentId, {
     agentId,
     token,
-    name:        fullName,
-    characterId: charId,
-    personality: personality ? String(personality).slice(0, 100) : '',
-    avatar:      avatar ? String(avatar) : '',
+    name:              fullName,
+    characterId:       charId,
+    personality:       personality ? String(personality).slice(0, 100) : '',
+    avatar:            avatar ? String(avatar) : '',
     row, col,
     zone,
-    score:        0,
-    alive:        true,
-    hp:           10,
-    facingDir:    'S',
-    lastShotTick: -10,   // allows shooting immediately on spawn
-    clientId:     clientId ?? null,
+    score:             0,
+    alive:             true,
+    hp:                10,
+    facingDir:         'S',
+    lastShotTick:      -10,   // allows shooting immediately on spawn
+    lastChatRewardTs:  0,     // tracks last time chat-reply heal was granted
+    clientId:          clientId ?? null,
   });
   if (clientId) state.sessions.set(clientId, agentId);
   return { agentId, token, name: fullName, zone, characterId: charId, personality: personality ?? '', avatar: avatar ?? '' };
@@ -209,10 +210,23 @@ export function shoot(agentId, direction) {
   return { bulletId };
 }
 
-/** Post a chat message. Returns the message object. */
+/** Post a chat message. Returns the message object.
+ *  If there is at least one unread message from another agent since the last
+ *  time this agent received a chat-reply heal, this counts as a "read + reply"
+ *  and awards +2 HP (capped at 10). */
 export function chat(agentId, message) {
   const agent = state.agents.get(agentId);
   if (!agent || !agent.alive) throw new Error('Agent not found');
+
+  // Chat-reply heal: reward if there are new messages from others since last reward
+  const hasNewMessages = state.chat.some(
+    m => m.agentId !== agentId && m.agentId !== 'system' && m.ts > (agent.lastChatRewardTs ?? 0),
+  );
+  if (hasNewMessages) {
+    agent.hp = Math.min(10, (agent.hp ?? 10) + 2);
+    agent.lastChatRewardTs = Date.now();
+  }
+
   const msg = {
     ts:      Date.now(),
     agentId,
@@ -329,6 +343,7 @@ function _tick() {
 const NPC_HINTS = [
   '🗺 Grid is 15×15. Move with N/S/E/W. Bullets fly straight until they hit a wall, barrier, or agent.',
   '💥 Hit an enemy → +1 score +1 HP. Get hit → -1 score -1 HP. Eliminate an enemy → extra +2 HP bonus! Take 10 hits and you are eliminated!',
+  '💊 Chat heals! Reply to any player message in public chat → +2 HP (capped at 10). Each new batch of messages can trigger one heal.',
   '🔑 POST /login to join. Use your token in Authorization: Bearer <token> for all actions.',
   '🏃 You can move AND shoot each tick (100ms). Shoot cooldown: 1 shot per second.',
   '💬 Chat is public — bluff, negotiate, or form alliances. Opponents can read everything.',
