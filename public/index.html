@@ -27,8 +27,9 @@
   }
 
   /* Center — arena */
-  #arena-wrap { flex: 0 0 auto; }
+  #arena-wrap { flex: 0 0 auto; position: relative; }
   canvas { display: block; border: 2px solid #4a4a8a; background: #0d0d1a; }
+  #fireworks-canvas { position: absolute; top: 0; left: 0; pointer-events: none; border: none; background: transparent; }
 
   /* Right — agents */
   #agents-panel {
@@ -111,6 +112,7 @@
   <!-- CENTER: Arena -->
   <div id="arena-wrap">
     <canvas id="canvas"></canvas>
+    <canvas id="fireworks-canvas"></canvas>
     <div style="text-align:center;margin-top:6px;font-size:12px;">
       <a href="https://github.com/kingkongfft/small-war" style="color:#a0a0ff" target="_blank" rel="noopener">https://github.com/kingkongfft/small-war</a>
     </div>
@@ -510,6 +512,93 @@ const ctx = canvas.getContext('2d');
 
 let lastChatTs = 0;
 let prevScores = {};
+let prevAgentIds = new Set();
+
+// ── Fireworks ────────────────────────────────────────────────────────────────
+const fwCanvas = document.getElementById('fireworks-canvas');
+fwCanvas.width  = W;
+fwCanvas.height = H;
+const fwCtx = fwCanvas.getContext('2d');
+
+const FW_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#f28cff',
+                   '#ff9f43','#48dbfb','#ffffff','#a29bfe','#55efc4'];
+const fwParticles = [];
+
+function spawnBurst(x, y) {
+  const count = 70;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
+    const speed = 1.5 + Math.random() * 5;
+    fwParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+      life: 1.0,
+      decay: 0.012 + Math.random() * 0.012,
+      size: 2 + Math.random() * 2.5,
+      trail: [],
+    });
+  }
+}
+
+function triggerFireworks() {
+  // Two bursts on left side, two on right side, staggered slightly
+  const margin = W * 0.08;
+  const yMin = H * 0.15, yRange = H * 0.7;
+  spawnBurst(margin + Math.random() * W * 0.08, yMin + Math.random() * yRange);
+  setTimeout(() => spawnBurst(margin + Math.random() * W * 0.08, yMin + Math.random() * yRange), 180);
+  spawnBurst(W - margin - Math.random() * W * 0.08, yMin + Math.random() * yRange);
+  setTimeout(() => spawnBurst(W - margin - Math.random() * W * 0.08, yMin + Math.random() * yRange), 250);
+}
+
+function animateFireworks() {
+  requestAnimationFrame(animateFireworks);
+  if (!fwParticles.length) { fwCtx.clearRect(0, 0, W, H); return; }
+
+  // Fade trail effect
+  fwCtx.fillStyle = 'rgba(13,13,26,0.18)';
+  fwCtx.fillRect(0, 0, W, H);
+
+  for (let i = fwParticles.length - 1; i >= 0; i--) {
+    const p = fwParticles[i];
+    p.trail.push({ x: p.x, y: p.y });
+    if (p.trail.length > 5) p.trail.shift();
+
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.09;   // gravity
+    p.vx *= 0.97;
+    p.vy *= 0.97;
+    p.life -= p.decay;
+
+    if (p.life <= 0) { fwParticles.splice(i, 1); continue; }
+
+    // Draw tail
+    if (p.trail.length > 1) {
+      fwCtx.strokeStyle = p.color;
+      fwCtx.lineWidth = p.size * p.life * 0.6;
+      fwCtx.globalAlpha = p.life * 0.4;
+      fwCtx.beginPath();
+      fwCtx.moveTo(p.trail[0].x, p.trail[0].y);
+      for (const pt of p.trail) fwCtx.lineTo(pt.x, pt.y);
+      fwCtx.stroke();
+    }
+
+    // Draw particle
+    fwCtx.globalAlpha = p.life;
+    fwCtx.fillStyle = p.color;
+    fwCtx.shadowColor = p.color;
+    fwCtx.shadowBlur = 6;
+    fwCtx.beginPath();
+    fwCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    fwCtx.fill();
+  }
+  fwCtx.globalAlpha = 1;
+  fwCtx.shadowBlur  = 0;
+}
+
+animateFireworks();
 
 // ── Draw ─────────────────────────────────────────────────────────────────────
 function draw(state) {
@@ -807,6 +896,16 @@ function connect() {
   ws.onmessage = (ev) => {
     const state = JSON.parse(ev.data);
     statusEl.textContent = `tick ${state.tick} | agents: ${state.agents.length}`;
+
+    // Detect eliminations — trigger fireworks for each killed agent
+    const currentIds = new Set(state.agents.filter(a => !a.isNpc).map(a => a.agentId));
+    if (prevAgentIds.size > 0) {
+      for (const id of prevAgentIds) {
+        if (!currentIds.has(id)) triggerFireworks();
+      }
+    }
+    prevAgentIds = currentIds;
+
     draw(state);
     updateAgentList(state.agents);
     updateChat(state.chat || []);
