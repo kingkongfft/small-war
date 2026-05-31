@@ -601,7 +601,8 @@ animateFireworks();
 
 // ── Audio Engine ──────────────────────────────────────────────────────────────
 let audioCtx = null;
-let masterGain = null;
+let bgmGain = null;   // BGM channel — kept quiet
+let sfxGain = null;   // SFX channel — loud and punchy
 let bgmPlaying = false;
 let bgmTimeout = null;
 let prevBulletIds = new Set();
@@ -609,13 +610,16 @@ let prevBulletIds = new Set();
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.22;
-  masterGain.connect(audioCtx.destination);
+  bgmGain = audioCtx.createGain();
+  bgmGain.gain.value = 0.18;
+  bgmGain.connect(audioCtx.destination);
+  sfxGain = audioCtx.createGain();
+  sfxGain.gain.value = 0.8;
+  sfxGain.connect(audioCtx.destination);
   startBGM();
 }
 
-function schedNote(freq, start, dur, type = 'square', vol = 0.18) {
+function schedNote(freq, start, dur, type = 'square', vol = 0.15) {
   if (!audioCtx || !freq) return;
   const osc = audioCtx.createOscillator();
   const g   = audioCtx.createGain();
@@ -625,29 +629,29 @@ function schedNote(freq, start, dur, type = 'square', vol = 0.18) {
   g.gain.setValueAtTime(vol * 0.75, start + dur * 0.75);
   g.gain.linearRampToValueAtTime(0.0001, start + dur);
   osc.connect(g);
-  g.connect(masterGain);
+  g.connect(bgmGain);   // BGM → bgmGain only
   osc.start(start);
   osc.stop(start + dur + 0.01);
 }
 
 // ── Shoot sound ───────────────────────────────────────────────────────────────
 function playShootSound() {
-  if (!audioCtx) return;
+  if (!audioCtx || !sfxGain) return;
   const t = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const g   = audioCtx.createGain();
   osc.type = 'square';
   osc.frequency.setValueAtTime(900, t);
   osc.frequency.exponentialRampToValueAtTime(120, t + 0.075);
-  g.gain.setValueAtTime(0.22, t);
+  g.gain.setValueAtTime(0.9, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-  osc.connect(g); g.connect(masterGain);
+  osc.connect(g); g.connect(sfxGain);   // SFX → sfxGain
   osc.start(t); osc.stop(t + 0.09);
 }
 
 // ── Explosion sound (fireworks) ───────────────────────────────────────────────
 function playExplosionSound() {
-  if (!audioCtx) return;
+  if (!audioCtx || !sfxGain) return;
   const t   = audioCtx.currentTime;
   const dur = 0.45;
   const sr  = audioCtx.sampleRate;
@@ -662,9 +666,9 @@ function playExplosionSound() {
   filter.frequency.setValueAtTime(1400, t);
   filter.frequency.exponentialRampToValueAtTime(180, t + dur);
   const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.55, t);
+  g.gain.setValueAtTime(1.0, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  src.connect(filter); filter.connect(g); g.connect(masterGain);
+  src.connect(filter); filter.connect(g); g.connect(sfxGain);  // SFX → sfxGain
   src.start(t);
 }
 
