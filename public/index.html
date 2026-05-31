@@ -599,6 +599,145 @@ function animateFireworks() {
 
 animateFireworks();
 
+// ── Audio Engine ──────────────────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let bgmPlaying = false;
+let bgmTimeout = null;
+let prevBulletIds = new Set();
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.22;
+  masterGain.connect(audioCtx.destination);
+  startBGM();
+}
+
+function schedNote(freq, start, dur, type = 'square', vol = 0.18) {
+  if (!audioCtx || !freq) return;
+  const osc = audioCtx.createOscillator();
+  const g   = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(vol, start);
+  g.gain.setValueAtTime(vol * 0.75, start + dur * 0.75);
+  g.gain.linearRampToValueAtTime(0.0001, start + dur);
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start(start);
+  osc.stop(start + dur + 0.01);
+}
+
+// ── Shoot sound ───────────────────────────────────────────────────────────────
+function playShootSound() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g   = audioCtx.createGain();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(900, t);
+  osc.frequency.exponentialRampToValueAtTime(120, t + 0.075);
+  g.gain.setValueAtTime(0.22, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+  osc.connect(g); g.connect(masterGain);
+  osc.start(t); osc.stop(t + 0.09);
+}
+
+// ── Explosion sound (fireworks) ───────────────────────────────────────────────
+function playExplosionSound() {
+  if (!audioCtx) return;
+  const t   = audioCtx.currentTime;
+  const dur = 0.45;
+  const sr  = audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(1, Math.floor(sr * dur), sr);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++)
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.2);
+  const src    = audioCtx.createBufferSource();
+  src.buffer   = buf;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type  = 'lowpass';
+  filter.frequency.setValueAtTime(1400, t);
+  filter.frequency.exponentialRampToValueAtTime(180, t + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.55, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(filter); filter.connect(g); g.connect(masterGain);
+  src.start(t);
+}
+
+// ── Original chiptune BGM ────────────────────────────────────────────────────
+// Original composition — E minor, 160 BPM, NES square/triangle timbre
+const BGM_BPM = 160;
+const T16 = 60 / BGM_BPM / 4; // one 16th note in seconds
+
+const F = {
+  E3:164.81, G3:196.00, A3:220.00, B3:246.94, C4:261.63,
+  D4:293.66,  E4:329.63, Fs4:369.99, G4:392.00, A4:440.00, B4:493.88,
+  C5:523.25,  D5:587.33, E5:659.25, Fs5:739.99, G5:783.99, A5:880.00, B5:987.77,
+  R:0,
+};
+
+// Original melody — 8 bars × 4/4, each pair is [freq, 16th-note-count]
+const MELODY = [
+  // Bar 1 — E minor ascent + turn
+  [F.E5,2],[F.G5,2],[F.E5,2],[F.D5,2],[F.B4,2],[F.D5,2],[F.E5,2],[F.G5,2],
+  // Bar 2 — A minor phrase
+  [F.A5,2],[F.G5,2],[F.E5,2],[F.D5,2],[F.E5,4],[F.R,4],
+  // Bar 3 — C major descent
+  [F.G5,2],[F.Fs5,2],[F.E5,2],[F.D5,2],[F.C5,2],[F.D5,2],[F.E5,2],[F.C5,2],
+  // Bar 4 — resolve to D
+  [F.B4,2],[F.A4,2],[F.B4,2],[F.C5,2],[F.D5,8],
+  // Bar 5 — echo of bar 1 (lower register)
+  [F.E5,2],[F.D5,2],[F.C5,2],[F.B4,2],[F.A4,2],[F.B4,2],[F.C5,2],[F.D5,2],
+  // Bar 6 — build up
+  [F.E5,4],[F.G5,4],[F.Fs5,2],[F.E5,2],[F.D5,2],[F.B4,2],
+  // Bar 7 — climbing run
+  [F.C5,2],[F.D5,2],[F.E5,2],[F.G5,2],[F.A5,2],[F.G5,2],[F.E5,2],[F.D5,2],
+  // Bar 8 — cadence
+  [F.E5,8],[F.R,4],[F.B4,4],
+];
+
+// Original bass line — triangle wave
+const BASS = [
+  [F.E3,8],[F.G3,4],[F.E3,4],   // Em
+  [F.A3,4],[F.E3,4],[F.A3,4],[F.R,4],
+  [F.C4,8],[F.G3,4],[F.C4,4],   // C
+  [F.D4,8],[F.A3,4],[F.D4,4],   // D
+  [F.E3,8],[F.B3,4],[F.E3,4],   // Em
+  [F.G3,8],[F.D4,4],[F.G3,4],   // G
+  [F.A3,8],[F.E4,4],[F.A3,4],   // Am
+  [F.E3,8],[F.B3,4],[F.E4,4],   // Em
+];
+
+function scheduleBGM(startTime) {
+  if (!bgmPlaying) return;
+  let t = startTime;
+  for (const [freq, dur] of MELODY) {
+    schedNote(freq, t, dur * T16 * 0.88, 'square', 0.15);
+    t += dur * T16;
+  }
+  const loopLen = t - startTime;
+  t = startTime;
+  for (const [freq, dur] of BASS) {
+    schedNote(freq, t, dur * T16 * 0.82, 'triangle', 0.11);
+    t += dur * T16;
+  }
+  bgmTimeout = setTimeout(() => scheduleBGM(startTime + loopLen), (loopLen - 0.15) * 1000);
+}
+
+function startBGM() {
+  if (bgmPlaying || !audioCtx) return;
+  bgmPlaying = true;
+  scheduleBGM(audioCtx.currentTime + 0.1);
+}
+
+// ── Init on first user interaction ────────────────────────────────────────────
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('keydown', initAudio, { once: true });
+
 // ── Draw ─────────────────────────────────────────────────────────────────────
 function draw(state) {
   ctx.clearRect(0, 0, W, H);
@@ -900,10 +1039,19 @@ function connect() {
     const currentIds = new Set(state.agents.filter(a => !a.isNpc).map(a => a.agentId));
     if (prevAgentIds.size > 0) {
       for (const id of prevAgentIds) {
-        if (!currentIds.has(id)) triggerFireworks();
+        if (!currentIds.has(id)) { triggerFireworks(); playExplosionSound(); }
       }
     }
     prevAgentIds = currentIds;
+
+    // Detect new bullets — play shoot sound
+    const currentBulletIds = new Set(state.bullets.map(b => b.bulletId));
+    if (prevBulletIds.size > 0) {
+      for (const id of currentBulletIds) {
+        if (!prevBulletIds.has(id)) { playShootSound(); break; } // one sound per tick max
+      }
+    }
+    prevBulletIds = currentBulletIds;
 
     draw(state);
     updateAgentList(state.agents);
