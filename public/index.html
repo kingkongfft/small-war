@@ -525,7 +525,7 @@ const FW_COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#f28cff',
 const fwParticles = [];
 
 function spawnBurst(x, y) {
-  const count = 70;
+  const count = 35;
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
     const speed = 1.5 + Math.random() * 5;
@@ -543,13 +543,13 @@ function spawnBurst(x, y) {
 }
 
 function triggerFireworks() {
-  // Two bursts on left side, two on right side, staggered slightly
-  const margin = W * 0.08;
-  const yMin = H * 0.15, yRange = H * 0.7;
-  spawnBurst(margin + Math.random() * W * 0.08, yMin + Math.random() * yRange);
-  setTimeout(() => spawnBurst(margin + Math.random() * W * 0.08, yMin + Math.random() * yRange), 180);
-  spawnBurst(W - margin - Math.random() * W * 0.08, yMin + Math.random() * yRange);
-  setTimeout(() => spawnBurst(W - margin - Math.random() * W * 0.08, yMin + Math.random() * yRange), 250);
+  // Small bursts confined to top-left and top-right corners
+  const cx = W * 0.08;
+  const cy = H * 0.08;
+  spawnBurst(cx + Math.random() * W * 0.06, cy + Math.random() * H * 0.06);
+  setTimeout(() => spawnBurst(cx + Math.random() * W * 0.06, cy + Math.random() * H * 0.06), 180);
+  spawnBurst(W - cx - Math.random() * W * 0.06, cy + Math.random() * H * 0.06);
+  setTimeout(() => spawnBurst(W - cx - Math.random() * W * 0.06, cy + Math.random() * H * 0.06), 250);
 }
 
 function animateFireworks() {
