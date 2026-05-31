@@ -556,9 +556,8 @@ function animateFireworks() {
   requestAnimationFrame(animateFireworks);
   if (!fwParticles.length) { fwCtx.clearRect(0, 0, W, H); return; }
 
-  // Fade trail effect
-  fwCtx.fillStyle = 'rgba(13,13,26,0.18)';
-  fwCtx.fillRect(0, 0, W, H);
+  // Clear canvas each frame — trails are drawn from stored trail arrays
+  fwCtx.clearRect(0, 0, W, H);
 
   for (let i = fwParticles.length - 1; i >= 0; i--) {
     const p = fwParticles[i];
